@@ -1,0 +1,16 @@
+[Unit]
+Description=Bluetools Bluetooth Management Service
+After=bluetooth.service network.target
+
+[Service]
+Type=simple
+Environment=PYTHONPATH=/opt/bluetools
+ExecStart=/usr/bin/python3 /opt/bluetools/bluetools/simple.py
+Restart=always
+RestartSec=5
+User=root
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

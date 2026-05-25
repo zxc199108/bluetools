@@ -1,0 +1,7 @@
+# Install via apt instead of pip (Ubuntu 24.04+):
+#   apt install python3-dbus python3-gi python3-yaml
+#
+# Dependencies:
+#   dbus-python  ->  python3-dbus
+#   PyGObject     ->  python3-gi
+#   PyYAML        ->  python3-yaml

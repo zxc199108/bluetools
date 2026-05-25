@@ -1,0 +1,35 @@
+# Bluetools configuration
+
+bluetooth:
+  adapter: "hci0"
+  device_name: "Bluetools"
+  ble_device_name: "Bluetools-BLE"
+  ble_service_uuid: "12345678-1234-1234-1234-123456789abc"
+  spp_uuid: "00001101-0000-1000-8000-00805f9b34fb"
+  spp_channel: 1
+
+logging:
+  level: "INFO"
+  file: "/var/log/bluetools.log"
+
+system:
+  allowed_commands:
+    - "reboot"
+    - "shutdown"
+    - "poweroff"
+    - "ifconfig"
+    - "ip"
+    - "ping"
+    - "hostname"
+    - "uptime"
+    - "free"
+    - "df"
+    - "ps"
+    - "top"
+    - "uname"
+    - "date"
+    - "whoami"
+    - "id"
+    - "lsblk"
+    - "dmesg"
+    - "journalctl"

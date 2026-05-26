@@ -12,7 +12,7 @@
         android:layout_height="48dp"
         android:orientation="horizontal"
         android:background="#111"
-        android:weightSum="3">
+        android:weightSum="4">
 
         <TextView
             android:id="@+id/tab_devices"
@@ -22,7 +22,7 @@
             android:gravity="center"
             android:text="Devices"
             android:textColor="#00d4aa"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground" />
@@ -35,7 +35,7 @@
             android:gravity="center"
             android:text="Terminal"
             android:textColor="#666"
-            android:textSize="13sp"
+            android:textSize="12sp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground" />
@@ -48,7 +48,20 @@
             android:gravity="center"
             android:text="WiFi"
             android:textColor="#666"
-            android:textSize="13sp"
+            android:textSize="12sp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground" />
+
+        <TextView
+            android:id="@+id/tab_log"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Log"
+            android:textColor="#666"
+            android:textSize="12sp"
             android:clickable="true"
             android:focusable="true"
             android:background="?attr/selectableItemBackground" />
@@ -100,7 +113,28 @@
                     android:layout_height="wrap_content" android:text="Connect" android:textSize="13sp" />
                 <Button android:id="@+id/disconnect_btn" android:layout_width="0dp" android:layout_weight="1"
                     android:layout_height="wrap_content" android:text="Off" android:textSize="13sp" android:enabled="false" />
-            </LinearLayout>
+    <!-- ===== Log Page ===== -->
+    <ScrollView
+        android:id="@+id/page_log"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/log_output"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="10dp"
+            android:textSize="11sp"
+            android:fontFamily="monospace"
+            android:textColor="#888"
+            android:background="#0a0a0a"
+            android:textIsSelectable="true"
+            android:text="JSON log..." />
+    </ScrollView>
+
+</LinearLayout>
         </LinearLayout>
     </ScrollView>
 

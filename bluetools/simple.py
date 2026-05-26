@@ -129,11 +129,20 @@ class SPPServer:
 
     def _handle(self, sock, addr):
         buf = b""
+        logger.info(f"[spp] New client: {addr}")
+        _send_raw(sock, "Bluetools ready.\n")
         try:
             while self._running:
-                data = sock.recv(4096)
+                try:
+                    sock.settimeout(30)
+                    data = sock.recv(4096)
+                except socket.timeout:
+                    continue
+                except OSError:
+                    break
                 if not data:
                     break
+                logger.info(f"[spp] rx {len(data)}B: {data[:100]!r}")
                 buf += data
                 while b"\n" in buf:
                     line, buf = buf.split(b"\n", 1)
@@ -201,9 +210,11 @@ class SPPServer:
 
 def _send(sock, data):
     try:
-        sock.sendall((json.dumps(data, ensure_ascii=False) + "\n").encode())
-    except OSError:
-        pass
+        out = (json.dumps(data, ensure_ascii=False) + "\n").encode()
+        sock.sendall(out)
+        logger.info(f"[spp] tx JSON: {out[:100]!r}")
+    except OSError as e:
+        logger.error(f"[spp] tx error: {e}")
 
 
 def _send_raw(sock, data):
@@ -212,8 +223,9 @@ def _send_raw(sock, data):
         if isinstance(data, str):
             data = data.encode()
         sock.sendall(data)
-    except OSError:
-        pass
+        logger.info(f"[spp] tx {len(data)}B: {data[:100]!r}")
+    except OSError as e:
+        logger.error(f"[spp] tx error: {e}")
 
 
 def _bt_addr():

@@ -13,7 +13,8 @@ class BluetoothHelper(
     private val onConnected: (Boolean) -> Unit
 ) {
     companion object {
-        val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
+        val SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
+        const val TARGET_NAME = "Bluetools"
     }
 
     private val adapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
@@ -24,31 +25,26 @@ class BluetoothHelper(
 
     fun isEnabled() = adapter?.isEnabled == true
 
-    fun getPairedDevices(): Set<BluetoothDevice> =
-        adapter?.bondedDevices ?: emptySet()
+    fun getPairedDevices(): List<BluetoothDevice> =
+        adapter?.bondedDevices?.filter { isTarget(it) } ?: emptyList()
 
-    fun scan(callback: (BluetoothDevice) -> Unit) {
-        if (!isEnabled()) {
-            onStatus("Please enable Bluetooth first")
-            return
-        }
-        onStatus("Scanning...")
-        val filter = android.content.IntentFilter(BluetoothDevice.ACTION_FOUND)
-        // Use startDiscovery for classic Bluetooth scan
-        adapter?.startDiscovery()
-        onStatus("Scan started. Select device from list.")
+    fun isTarget(device: BluetoothDevice): Boolean {
+        val name = device.name ?: ""
+        return name.contains(TARGET_NAME, ignoreCase = true)
     }
 
-    fun pair(device: BluetoothDevice, pin: String) {
+    fun startDiscovery() {
+        adapter?.startDiscovery()
+    }
+
+    fun cancelDiscovery() {
+        adapter?.cancelDiscovery()
+    }
+
+    fun pair(device: BluetoothDevice) {
         onStatus("Pairing with ${device.name ?: device.address}...")
-        try {
-            val m = device.javaClass.getMethod("setPin", ByteArray::class.java)
-            m.invoke(device, pin.toByteArray())
-            device.createBond()
-            onStatus("Pairing started. Check phone for PIN prompt.")
-        } catch (e: Exception) {
-            onStatus("Pairing error: ${e.message}. Try pairing from system settings first.")
-        }
+        // Trigger bonding - system will show PIN dialog
+        device.createBond()
     }
 
     fun connect(device: BluetoothDevice) {

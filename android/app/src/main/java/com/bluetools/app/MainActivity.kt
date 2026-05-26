@@ -30,19 +30,49 @@ class MainActivity : AppCompatActivity() {
     private lateinit var disconnectBtn: Button
     private var selectedDevice: BluetoothDevice? = null
     private var msgId = AtomicInteger(0)
+    private var pendingConnectDevice: BluetoothDevice? = null
+    private var pendingConnect: Boolean = false
 
-    private val REQUEST_ENABLE_BT = 1
     private val REQUEST_PERMISSIONS = 2
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (BluetoothDevice.ACTION_FOUND == intent.action) {
-                val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                if (device != null) {
-                    addDeviceButton(device)
+            when (intent.action) {
+                BluetoothDevice.ACTION_FOUND -> {
+                    val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                    if (device != null && bt.isTarget(device)) {
+                        addDeviceButton(device)
+                    }
                 }
-            } else if (BluetoothAdapter.ACTION_DISCOVERY_FINISHED == intent.action) {
-                statusText.text = "Scan finished"
+                BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
+                    statusText.text = "Scan finished"
+                }
+                BluetoothDevice.ACTION_BOND_STATE_CHANGED -> {
+                    val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                    val state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1)
+                    if (device != null && bt.isTarget(device)) {
+                        when (state) {
+                            BluetoothDevice.BOND_BONDED -> {
+                                statusText.text = "Paired! Connecting..."
+                                if (pendingConnect && pendingConnectDevice?.address == device.address) {
+                                    pendingConnect = false
+                                    pendingConnectDevice = null
+                                    bt.connect(device)
+                                }
+                            }
+                            BluetoothDevice.BOND_NONE -> {
+                                if (pendingConnect && pendingConnectDevice?.address == device.address) {
+                                    statusText.text = "Pairing failed. Try system settings first."
+                                    pendingConnect = false
+                                    pendingConnectDevice = null
+                                }
+                            }
+                            BluetoothDevice.BOND_BONDING -> {
+                                statusText.text = "Pairing... Check phone for PIN."
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -72,10 +102,17 @@ class MainActivity : AppCompatActivity() {
             }
         )
 
+        val filter = IntentFilter().apply {
+            addAction(BluetoothDevice.ACTION_FOUND)
+            addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
+            addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+        }
+        registerReceiver(receiver, filter)
+
         checkPermissions()
 
         scanBtn.setOnClickListener { startScan() }
-        connectBtn.setOnClickListener { connectToDevice() }
+        connectBtn.setOnClickListener { connectOrPair() }
         disconnectBtn.setOnClickListener { bt.disconnect() }
 
         findViewById<Button>(R.id.ping_btn).setOnClickListener { sendJson("ping") }
@@ -95,7 +132,6 @@ class MainActivity : AppCompatActivity() {
             sendCommand(cmd)
         }
 
-        // Show already-paired devices
         showPairedDevices()
     }
 
@@ -118,25 +154,31 @@ class MainActivity : AppCompatActivity() {
     private fun showPairedDevices() {
         deviceList.removeAllViews()
         bt.getPairedDevices().forEach { addDeviceButton(it) }
+        if (bt.getPairedDevices().isEmpty()) {
+            val tv = TextView(this).apply {
+                text = "(no paired Bluetools)\nTap Scan to find devices"
+                textSize = 12f
+                setTextColor(0xFF666666.toInt())
+                setPadding(4, 16, 4, 16)
+            }
+            deviceList.addView(tv)
+        }
     }
 
     private fun startScan() {
         checkPermissions()
         deviceList.removeAllViews()
         showPairedDevices()
-
-        val filter = IntentFilter().apply {
-            addAction(BluetoothDevice.ACTION_FOUND)
-            addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
-        }
-        registerReceiver(receiver, filter)
-        bt.scan {}
+        bt.startDiscovery()
+        statusText.text = "Scanning... (only Bluetools)"
     }
 
     private fun addDeviceButton(device: BluetoothDevice) {
         val name = device.name ?: device.address
+        val bonded = device.bondState == BluetoothDevice.BOND_BONDED
+        val label = if (bonded) "$name ✓\n${device.address}" else "$name\n${device.address}"
         val btn = Button(this).apply {
-            text = "$name\n${device.address}"
+            text = label
             textSize = 12f
             setOnClickListener {
                 selectedDevice = device
@@ -146,13 +188,19 @@ class MainActivity : AppCompatActivity() {
         deviceList.addView(btn)
     }
 
-    private fun connectToDevice() {
+    private fun connectOrPair() {
         val device = selectedDevice
         if (device == null) {
             Toast.makeText(this, "Select a device first", Toast.LENGTH_SHORT).show()
             return
         }
-        bt.connect(device)
+        if (device.bondState == BluetoothDevice.BOND_BONDED) {
+            bt.connect(device)
+        } else {
+            pendingConnect = true
+            pendingConnectDevice = device
+            bt.pair(device)
+        }
     }
 
     private fun sendJson(type: String) {

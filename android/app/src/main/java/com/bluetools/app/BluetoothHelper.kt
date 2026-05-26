@@ -52,8 +52,59 @@ class BluetoothHelper(
         job = CoroutineScope(Dispatchers.IO).launch {
             try {
                 onStatus("Connecting to ${device.name ?: device.address}...")
-                socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-                socket?.connect()
+                socket = null
+
+                // Try 1: insecure RFCOMM by UUID (Android recommended)
+                try {
+                    socket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+                    socket?.connect()
+                } catch (e: Exception) {
+                    try { socket?.close() } catch (_: Exception) {}
+                }
+
+                // Try 2: normal RFCOMM by UUID
+                if (socket == null || !socket!!.isConnected) {
+                    try { socket?.close() } catch (_: Exception) {}
+                    try {
+                        socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                        socket?.connect()
+                    } catch (e: Exception) {
+                        try { socket?.close() } catch (_: Exception) {}
+                    }
+                }
+
+                // Try 3: reflection to connect on channel 1 directly
+                if (socket == null || !socket!!.isConnected) {
+                    try { socket?.close() } catch (_: Exception) {}
+                    onStatus("Trying channel 1...")
+                    try {
+                        val m = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                        socket = m.invoke(device, 1) as BluetoothSocket
+                        socket?.connect()
+                    } catch (e: Exception) {
+                        try { socket?.close() } catch (_: Exception) {}
+                        socket = null
+                    }
+                }
+
+                // Try 4: insecure reflection on channel 1
+                if (socket == null || !socket!!.isConnected) {
+                    try { socket?.close() } catch (_: Exception) {}
+                    onStatus("Trying insecure channel 1...")
+                    try {
+                        val m = device.javaClass.getMethod("createInsecureRfcommSocket", Int::class.javaPrimitiveType)
+                        socket = m.invoke(device, 1) as BluetoothSocket
+                        socket?.connect()
+                    } catch (e: Exception) {
+                        try { socket?.close() } catch (_: Exception) {}
+                        throw IOException("All connection methods failed: ${e.message}")
+                    }
+                }
+
+                if (socket == null || !socket!!.isConnected) {
+                    throw IOException("Failed to connect")
+                }
+
                 input = BufferedReader(InputStreamReader(socket!!.inputStream))
                 output = socket!!.outputStream
                 onConnected(true)

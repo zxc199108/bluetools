@@ -166,6 +166,10 @@ class SPPServer:
                 out = r.stdout
                 if r.stderr:
                     out += r.stderr
+                if not out:
+                    out = "(no output)\n"
+                if not out.endswith("\n"):
+                    out += "\n"
                 _send_raw(sock, out)
             except subprocess.TimeoutExpired:
                 _send_raw(sock, "ERROR: command timed out\n")

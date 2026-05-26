@@ -110,10 +110,21 @@ class BluetoothHelper(
                 onConnected(true)
                 withContext(Dispatchers.Main) { onStatus("Connected!") }
 
+                // Read loop: read available bytes, split by newline
+                val sb = StringBuilder()
+                val buf = CharArray(1024)
                 while (isActive) {
-                    val line = input?.readLine() ?: break
-                    if (line.isNotBlank()) {
-                        withContext(Dispatchers.Main) { onData(line) }
+                    val n = input?.read(buf) ?: break
+                    if (n < 0) break
+                    sb.append(buf, 0, n)
+                    while (true) {
+                        val nl = sb.indexOf('\n')
+                        if (nl < 0) break
+                        val line = sb.substring(0, nl).trim()
+                        sb.delete(0, nl + 1)
+                        if (line.isNotBlank()) {
+                            withContext(Dispatchers.Main) { onData(line) }
+                        }
                     }
                 }
             } catch (e: IOException) {

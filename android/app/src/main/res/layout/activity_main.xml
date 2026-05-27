@@ -37,7 +37,8 @@
     <TextView android:id="@+id/status_text"
         android:layout_width="match_parent" android:layout_height="wrap_content"
         android:text="Ready" android:textColor="#00d4aa" android:textSize="11sp"
-        android:padding="4dp 8dp" android:background="#0d0d0d" />
+        android:paddingTop="4dp" android:paddingBottom="4dp"
+        android:paddingLeft="8dp" android:paddingRight="8dp" android:background="#0d0d0d" />
 
     <!-- Devices page -->
     <ScrollView android:id="@+id/page_devices"

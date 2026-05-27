@@ -1,201 +1,129 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:background="#0a0a0a">
 
+    <!-- Tabs -->
     <LinearLayout
+        android:id="@+id/tab_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp">
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:background="#111"
+        android:weightSum="3">
 
-        <!-- Status -->
-        <TextView
-            android:id="@+id/status_text"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Ready"
-            android:textColor="#00d4aa"
-            android:textSize="14sp"
-            android:padding="8dp"
-            android:background="#111"
-            android:layout_marginBottom="8dp" />
+        <TextView android:id="@+id/tab_devices" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="match_parent" android:gravity="center" android:text="Devices"
+            android:textColor="#00d4aa" android:textSize="12sp"
+            android:clickable="true" android:focusable="true"
+            android:background="?attr/selectableItemBackground" />
 
-        <!-- Device list -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="DEVICES"
-            android:textColor="#666"
-            android:textSize="12sp"
-            android:layout_marginBottom="4dp" />
+        <TextView android:id="@+id/tab_terminal" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="match_parent" android:gravity="center" android:text="Terminal"
+            android:textColor="#666" android:textSize="12sp"
+            android:clickable="true" android:focusable="true"
+            android:background="?attr/selectableItemBackground" />
 
-        <LinearLayout
-            android:id="@+id/device_list"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp">
-
-            <Button
-                android:id="@+id/scan_btn"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Scan"
-                android:layout_marginEnd="4dp" />
-
-            <Button
-                android:id="@+id/connect_btn"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Connect"
-                android:layout_marginEnd="4dp" />
-
-            <Button
-                android:id="@+id/disconnect_btn"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Disconnect"
-                android:enabled="false" />
-        </LinearLayout>
-
-        <!-- Test -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="TEST"
-            android:textColor="#666"
-            android:textSize="12sp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="4dp" />
-
-        <Button
-            android:id="@+id/ping_btn"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Ping" />
-
-        <!-- WiFi -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="WIFI PROVISIONING"
-            android:textColor="#666"
-            android:textSize="12sp"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="4dp" />
-
-        <EditText
-            android:id="@+id/ssid_input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="WiFi SSID"
-            android:textColor="#ddd"
-            android:textColorHint="#444"
-            android:background="#111"
-            android:padding="10dp"
-            android:layout_marginBottom="6dp" />
-
-        <EditText
-            android:id="@+id/pass_input"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="WiFi Password"
-            android:inputType="textPassword"
-            android:textColor="#ddd"
-            android:textColorHint="#444"
-            android:background="#111"
-            android:padding="10dp"
-            android:layout_marginBottom="6dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <Button
-                android:id="@+id/scan_wifi_btn"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Scan WiFi"
-                android:layout_marginEnd="4dp" />
-
-            <Button
-                android:id="@+id/wifi_connect_btn"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Connect WiFi" />
-        </LinearLayout>
-
-        <!-- Command -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="SYSTEM COMMAND"
-            android:textColor="#666"
-            android:textSize="12sp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="4dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
-
-            <EditText
-                android:id="@+id/cmd_input"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:hint="uptime"
-                android:textColor="#ddd"
-                android:textColorHint="#444"
-                android:background="#111"
-                android:padding="10dp"
-                android:layout_marginEnd="4dp" />
-
-            <Button
-                android:id="@+id/cmd_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Run" />
-        </LinearLayout>
-
-        <!-- Output -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="OUTPUT"
-            android:textColor="#666"
-            android:textSize="12sp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="4dp" />
-
-        <TextView
-            android:id="@+id/output_text"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="#111"
-            android:padding="10dp"
-            android:textSize="12sp"
-            android:fontFamily="monospace"
-            android:textColor="#999"
-            android:minHeight="100dp"
-            android:text="--" />
-
+        <TextView android:id="@+id/tab_wifi" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="match_parent" android:gravity="center" android:text="WiFi"
+            android:textColor="#666" android:textSize="12sp"
+            android:clickable="true" android:focusable="true"
+            android:background="?attr/selectableItemBackground" />
     </LinearLayout>
-</ScrollView>
+
+    <!-- Status -->
+    <TextView android:id="@+id/status_text"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Ready" android:textColor="#00d4aa" android:textSize="11sp"
+        android:padding="4dp 8dp" android:background="#0d0d0d" />
+
+    <!-- Devices page -->
+    <ScrollView android:id="@+id/page_devices"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="8dp">
+            <LinearLayout android:id="@+id/device_list" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:layout_marginTop="6dp">
+                <Button android:id="@+id/scan_btn" android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Scan" android:textSize="12sp" />
+                <Button android:id="@+id/connect_btn" android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Connect" android:textSize="12sp" />
+                <Button android:id="@+id/disconnect_btn" android:layout_width="0dp" android:layout_weight="1"
+                    android:layout_height="wrap_content" android:text="Off" android:textSize="12sp" android:enabled="false" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Terminal page -->
+    <LinearLayout android:id="@+id/page_terminal"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:orientation="vertical" android:visibility="gone">
+
+        <ScrollView android:id="@+id/term_scroll"
+            android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+            <TextView android:id="@+id/term_output"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:padding="8dp" android:textSize="13sp" android:fontFamily="monospace"
+                android:textColor="#0f0" android:background="#0a0a0a"
+                android:textIsSelectable="true" android:text="Bluetools ready.\n" />
+        </ScrollView>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:padding="4dp" android:background="#111">
+            <EditText android:id="@+id/term_input"
+                android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+                android:hint="type command..." android:textColor="#0f0" android:textColorHint="#333"
+                android:background="#0a0a0a" android:padding="8dp" android:textSize="14sp"
+                android:fontFamily="monospace" android:maxLines="3"
+                android:imeOptions="actionSend" android:inputType="textMultiLine|textShortMessage" />
+            <Button android:id="@+id/term_send" android:layout_width="wrap_content"
+                android:layout_height="match_parent" android:text="Send" android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:padding="2dp" android:background="#111">
+            <Button android:id="@+id/btn_uptime" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="34dp" android:text="uptime" android:textSize="10sp" />
+            <Button android:id="@+id/btn_df" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="34dp" android:text="df -h" android:textSize="10sp" />
+            <Button android:id="@+id/btn_free" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="34dp" android:text="free -h" android:textSize="10sp" />
+            <Button android:id="@+id/btn_ps" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="34dp" android:text="ps" android:textSize="10sp" />
+            <Button android:id="@+id/btn_ls" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="34dp" android:text="ls" android:textSize="10sp" />
+            <Button android:id="@+id/btn_clear" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="34dp" android:text="clear" android:textSize="10sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- WiFi page -->
+    <ScrollView android:id="@+id/page_wifi"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:visibility="gone">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="vertical" android:padding="8dp">
+            <Button android:id="@+id/scan_wifi_btn" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="Scan Networks" android:textSize="13sp"
+                android:layout_marginBottom="8dp" />
+            <LinearLayout android:id="@+id/wifi_list" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:orientation="vertical"
+                android:layout_marginBottom="8dp" />
+            <EditText android:id="@+id/ssid_input" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:hint="SSID" android:textColor="#ddd"
+                android:textColorHint="#333" android:background="#111" android:padding="8dp"
+                android:layout_marginBottom="6dp" />
+            <EditText android:id="@+id/pass_input" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:hint="Password" android:inputType="textPassword"
+                android:textColor="#ddd" android:textColorHint="#333" android:background="#111"
+                android:padding="8dp" android:layout_marginBottom="8dp" />
+            <Button android:id="@+id/wifi_connect_btn" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="Connect WiFi" android:textSize="13sp" />
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

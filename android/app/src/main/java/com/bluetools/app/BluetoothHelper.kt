@@ -13,42 +13,23 @@ class BluetoothHelper(
     private val onConnected: (Boolean) -> Unit
 ) {
     companion object {
-        val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
+        val SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
+        const val TARGET = "Bluetools"
     }
 
-    private val adapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
+    private val adapter = BluetoothAdapter.getDefaultAdapter()
     private var socket: BluetoothSocket? = null
     private var input: BufferedReader? = null
     private var output: OutputStream? = null
     private var job: Job? = null
 
-    fun isEnabled() = adapter?.isEnabled == true
+    fun isTarget(d: BluetoothDevice) = (d.name ?: "").contains(TARGET, true)
+    fun getPairedDevices() = adapter?.bondedDevices?.filter { isTarget(it) } ?: emptyList()
+    fun startDiscovery() { adapter?.startDiscovery() }
 
-    fun getPairedDevices(): Set<BluetoothDevice> =
-        adapter?.bondedDevices ?: emptySet()
-
-    fun scan(callback: (BluetoothDevice) -> Unit) {
-        if (!isEnabled()) {
-            onStatus("Please enable Bluetooth first")
-            return
-        }
-        onStatus("Scanning...")
-        val filter = android.content.IntentFilter(BluetoothDevice.ACTION_FOUND)
-        // Use startDiscovery for classic Bluetooth scan
-        adapter?.startDiscovery()
-        onStatus("Scan started. Select device from list.")
-    }
-
-    fun pair(device: BluetoothDevice, pin: String) {
-        onStatus("Pairing with ${device.name ?: device.address}...")
-        try {
-            val m = device.javaClass.getMethod("setPin", ByteArray::class.java)
-            m.invoke(device, pin.toByteArray())
-            device.createBond()
-            onStatus("Pairing started. Check phone for PIN prompt.")
-        } catch (e: Exception) {
-            onStatus("Pairing error: ${e.message}. Try pairing from system settings first.")
-        }
+    fun pair(d: BluetoothDevice) {
+        onStatus("Pairing...")
+        d.createBond()
     }
 
     fun connect(device: BluetoothDevice) {
@@ -77,12 +58,12 @@ class BluetoothHelper(
                 }
 
                 if (socket == null || !socket!!.isConnected)
-                    throw IOException("Cannot connect SPP")
+                    throw IOException("Cannot connect")
 
                 input = BufferedReader(InputStreamReader(socket!!.inputStream))
                 output = socket!!.outputStream
                 onConnected(true)
-                withContext(Dispatchers.Main) { onStatus("Connected!") }
+                withContext(Dispatchers.Main) { onStatus("Connected") }
 
                 while (isActive) {
                     val line = input?.readLine() ?: break
@@ -90,10 +71,7 @@ class BluetoothHelper(
                         withContext(Dispatchers.Main) { onData(line) }
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    onStatus("Error: ${e.message}")
-                    disconnect()
-                }
+                withContext(Dispatchers.Main) { onStatus("Err: ${e.message}"); disconnect() }
             }
         }
     }
@@ -101,11 +79,8 @@ class BluetoothHelper(
     fun send(data: String) {
         try {
             val msg = if (data.endsWith("\n")) data else "$data\n"
-            output?.write(msg.toByteArray())
-            output?.flush()
-        } catch (e: Exception) {
-            onStatus("Send error: ${e.message}")
-        }
+            output?.write(msg.toByteArray()); output?.flush()
+        } catch (_: Exception) { onStatus("Send fail") }
     }
 
     fun disconnect() {
@@ -113,9 +88,7 @@ class BluetoothHelper(
         try { input?.close() } catch (_: Exception) {}
         try { output?.close() } catch (_: Exception) {}
         try { socket?.close() } catch (_: Exception) {}
-        input = null
-        output = null
-        socket = null
+        input = null; output = null; socket = null
         onConnected(false)
         onStatus("Disconnected")
     }

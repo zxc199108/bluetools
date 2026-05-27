@@ -76,6 +76,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        checkPermissions() // Android 12+蓝牙权限
+
         statusText = findViewById(R.id.status_text)
         deviceList = findViewById(R.id.device_list)
         termOutput = findViewById(R.id.term_output)
@@ -192,7 +194,22 @@ class MainActivity : AppCompatActivity() {
         t.setTextColor(0xFF00d4aa.toInt())
     }
 
+    private fun checkPermissions() {
+        val needed = mutableListOf<String>()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)
+                needed.add(Manifest.permission.BLUETOOTH_CONNECT)
+            if (checkSelfPermission(Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED)
+                needed.add(Manifest.permission.BLUETOOTH_SCAN)
+        }
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+            needed.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (needed.isNotEmpty())
+            ActivityCompat.requestPermissions(this, needed.toTypedArray(), 2)
+    }
+
     private fun scan() {
+        checkPermissions()
         deviceList.removeAllViews()
         showPaired()
         bt.startDiscovery()

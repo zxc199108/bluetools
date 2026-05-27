@@ -1,13 +1,14 @@
 [Unit]
 Description=Bluetools Bluetooth Management Service
 After=bluetooth.service network.target
+Requires=bluetooth.service
 
 [Service]
 Type=simple
 Environment=PYTHONPATH=/opt/bluetools
 ExecStart=/usr/bin/python3 /opt/bluetools/bluetools/simple.py
 Restart=always
-RestartSec=5
+RestartSec=3
 User=root
 StandardOutput=journal
 StandardError=journal

@@ -13,8 +13,7 @@ class BluetoothHelper(
     private val onConnected: (Boolean) -> Unit
 ) {
     companion object {
-        val SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
-        const val TARGET_NAME = "Bluetools"
+        val SPP_UUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb")
     }
 
     private val adapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
@@ -25,85 +24,60 @@ class BluetoothHelper(
 
     fun isEnabled() = adapter?.isEnabled == true
 
-    fun getPairedDevices(): List<BluetoothDevice> =
-        adapter?.bondedDevices?.filter { isTarget(it) } ?: emptyList()
+    fun getPairedDevices(): Set<BluetoothDevice> =
+        adapter?.bondedDevices ?: emptySet()
 
-    fun isTarget(device: BluetoothDevice): Boolean {
-        val name = device.name ?: ""
-        return name.contains(TARGET_NAME, ignoreCase = true)
-    }
-
-    fun startDiscovery() {
+    fun scan(callback: (BluetoothDevice) -> Unit) {
+        if (!isEnabled()) {
+            onStatus("Please enable Bluetooth first")
+            return
+        }
+        onStatus("Scanning...")
+        val filter = android.content.IntentFilter(BluetoothDevice.ACTION_FOUND)
+        // Use startDiscovery for classic Bluetooth scan
         adapter?.startDiscovery()
+        onStatus("Scan started. Select device from list.")
     }
 
-    fun cancelDiscovery() {
-        adapter?.cancelDiscovery()
-    }
-
-    fun pair(device: BluetoothDevice) {
+    fun pair(device: BluetoothDevice, pin: String) {
         onStatus("Pairing with ${device.name ?: device.address}...")
-        // Trigger bonding - system will show PIN dialog
-        device.createBond()
+        try {
+            val m = device.javaClass.getMethod("setPin", ByteArray::class.java)
+            m.invoke(device, pin.toByteArray())
+            device.createBond()
+            onStatus("Pairing started. Check phone for PIN prompt.")
+        } catch (e: Exception) {
+            onStatus("Pairing error: ${e.message}. Try pairing from system settings first.")
+        }
     }
 
     fun connect(device: BluetoothDevice) {
         job?.cancel()
         job = CoroutineScope(Dispatchers.IO).launch {
             try {
-                onStatus("Connecting to ${device.name ?: device.address}...")
+                onStatus("Connecting...")
                 socket = null
 
-                // Try 1: insecure RFCOMM by UUID (Android recommended)
-                try {
-                    socket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
-                    socket?.connect()
-                } catch (e: Exception) {
-                    try { socket?.close() } catch (_: Exception) {}
-                }
+                try { socket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID); socket?.connect() }
+                catch (_: Exception) { try { socket?.close() } catch (_: Exception) {} }
 
-                // Try 2: normal RFCOMM by UUID
                 if (socket == null || !socket!!.isConnected) {
                     try { socket?.close() } catch (_: Exception) {}
-                    try {
-                        socket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-                        socket?.connect()
-                    } catch (e: Exception) {
-                        try { socket?.close() } catch (_: Exception) {}
-                    }
+                    try { socket = device.createRfcommSocketToServiceRecord(SPP_UUID); socket?.connect() }
+                    catch (_: Exception) { try { socket?.close() } catch (_: Exception) {} }
                 }
 
-                // Try 3: reflection to connect on channel 1 directly
                 if (socket == null || !socket!!.isConnected) {
                     try { socket?.close() } catch (_: Exception) {}
-                    onStatus("Trying channel 1...")
                     try {
                         val m = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
                         socket = m.invoke(device, 1) as BluetoothSocket
                         socket?.connect()
-                    } catch (e: Exception) {
-                        try { socket?.close() } catch (_: Exception) {}
-                        socket = null
-                    }
+                    } catch (_: Exception) { try { socket?.close() } catch (_: Exception) {} }
                 }
 
-                // Try 4: insecure reflection on channel 1
-                if (socket == null || !socket!!.isConnected) {
-                    try { socket?.close() } catch (_: Exception) {}
-                    onStatus("Trying insecure channel 1...")
-                    try {
-                        val m = device.javaClass.getMethod("createInsecureRfcommSocket", Int::class.javaPrimitiveType)
-                        socket = m.invoke(device, 1) as BluetoothSocket
-                        socket?.connect()
-                    } catch (e: Exception) {
-                        try { socket?.close() } catch (_: Exception) {}
-                        throw IOException("All connection methods failed: ${e.message}")
-                    }
-                }
-
-                if (socket == null || !socket!!.isConnected) {
-                    throw IOException("Failed to connect")
-                }
+                if (socket == null || !socket!!.isConnected)
+                    throw IOException("Cannot connect SPP")
 
                 input = BufferedReader(InputStreamReader(socket!!.inputStream))
                 output = socket!!.outputStream
@@ -112,13 +86,12 @@ class BluetoothHelper(
 
                 while (isActive) {
                     val line = input?.readLine() ?: break
-                    if (line.isNotBlank()) {
+                    if (line.isNotBlank())
                         withContext(Dispatchers.Main) { onData(line) }
-                    }
                 }
-            } catch (e: IOException) {
+            } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    onStatus("Connection error: ${e.message}")
+                    onStatus("Error: ${e.message}")
                     disconnect()
                 }
             }
@@ -130,7 +103,6 @@ class BluetoothHelper(
             val msg = if (data.endsWith("\n")) data else "$data\n"
             output?.write(msg.toByteArray())
             output?.flush()
-            onStatus("Sent ${data.take(40)}")
         } catch (e: Exception) {
             onStatus("Send error: ${e.message}")
         }

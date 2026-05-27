@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Raw-socket SPP + bluetoothctl auto-agent + Web UI.  No pexpect needed."""
-import socket, subprocess, threading, json, os, time, signal, logging, select
+import socket, subprocess, threading, json, os, time, signal, logging
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 DEVICE_NAME = "Bluetools"
@@ -15,77 +15,63 @@ logger = logging.getLogger("bluetools")
 # ═══════════════════════════════════════════════════
 #  BLUETOOTHCTL AUTO-AGENT (no D-Bus, no pexpect)
 # ═══════════════════════════════════════════════════
-def start_bt_agent():
-    """Spawn bluetoothctl, auto-answer prompts via stdin pipe."""
-    p = subprocess.Popen(
-        ["bluetoothctl"],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
-    )
-    # Register as default agent
-    p.stdin.write("agent on\n")
-    p.stdin.write("default-agent\n")
-    p.stdin.flush()
-    logger.info("[agent] bluetoothctl agent started")
+def start_dbus_agent():
+    """Register BlueZ D-Bus agent in a thread. No external processes."""
+    try:
+        import dbus, dbus.service, dbus.mainloop.glib
+        from gi.repository import GLib
+    except ImportError as e:
+        logger.error(f"[agent] dbus missing: {e}")
+        return
 
-    def _reader():
-        while p.poll() is None:
-            try:
-                r, _, _ = select.select([p.stdout], [], [], 0.5)
-                if r:
-                    line = p.stdout.readline()
-                    if not line:
-                        break
-                    line = line.strip()
-                    # Skip ANSI escape codes
-                    import re
-                    line = re.sub(r"\x1b\[[0-9;]*m", "", line)
-                    logger.debug(f"[btctl] {line}")
+    class _A(dbus.service.Object):
+        def __init__(self, bus):
+            dbus.service.Object.__init__(self, bus, "/org/bluetools/agent")
+        @dbus.service.method("org.bluez.Agent1", in_signature="", out_signature="")
+        def Release(self): pass
+        @dbus.service.method("org.bluez.Agent1", in_signature="o", out_signature="s")
+        def RequestPinCode(self, device):
+            logger.info(f"[agent] pin -> {PIN_CODE}")
+            return PIN_CODE
+        @dbus.service.method("org.bluez.Agent1", in_signature="os", out_signature="")
+        def DisplayPinCode(self, device, pincode): pass
+        @dbus.service.method("org.bluez.Agent1", in_signature="o", out_signature="u")
+        def RequestPasskey(self, device):
+            return dbus.types.UInt32(int(PIN_CODE))
+        @dbus.service.method("org.bluez.Agent1", in_signature="ouq", out_signature="")
+        def DisplayPasskey(self, device, passkey, entered): pass
+        @dbus.service.method("org.bluez.Agent1", in_signature="ou", out_signature="")
+        def RequestConfirmation(self, device, passkey): pass
+        @dbus.service.method("org.bluez.Agent1", in_signature="o", out_signature="")
+        def RequestAuthorization(self, device): pass
+        @dbus.service.method("org.bluez.Agent1", in_signature="os", out_signature="")
+        def AuthorizeService(self, device, uuid): pass
+        @dbus.service.method("org.bluez.Agent1", in_signature="", out_signature="")
+        def Cancel(self): pass
 
-                    if "Enter PIN code:" in line or "Enter passkey" in line:
-                        p.stdin.write(f"{PIN_CODE}\n")
-                        p.stdin.flush()
-                        logger.info("[agent] -> PIN sent")
-                    elif "yes/no" in line.lower() or "Authorize service" in line:
-                        p.stdin.write("yes\n")
-                        p.stdin.flush()
-                        logger.info("[agent] -> yes")
-                    elif "Confirm passkey" in line or "confirm" in line.lower():
-                        p.stdin.write("yes\n")
-                        p.stdin.flush()
-                        logger.info("[agent] -> confirm")
-            except Exception:
-                continue
-        logger.warning("[agent] bluetoothctl exited, will restart")
-        p.stdin.close()
+    def _run():
+        try:
+            dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+            bus = dbus.SystemBus()
+            _A(bus)
+            mgr = dbus.Interface(bus.get_object("org.bluez", "/org/bluez"), "org.bluez.AgentManager1")
+            path = dbus.ObjectPath("/org/bluetools/agent")
+            try: mgr.UnregisterAgent(path)
+            except: pass
+            mgr.RegisterAgent(path, "DisplayOnly")
+            mgr.RequestDefaultAgent(path)
+            logger.info(f"[agent] registered (PIN={PIN_CODE})")
+            GLib.MainLoop().run()
+        except Exception as e:
+            logger.error(f"[agent] {e}")
 
-    t = threading.Thread(target=_reader, daemon=True, name="bt-reader")
+    t = threading.Thread(target=_run, daemon=True, name="agent")
     t.start()
-    return p
+    time.sleep(0.5)
 
 
 def init_adapter():
-    for cmd in [
-        ["hciconfig", "hci0", "up"],
-        ["hciconfig", "hci0", "name", DEVICE_NAME],
-        ["btmgmt", "ssp", "off"],
-        ["btmgmt", "sc", "off"],
-        ["btmgmt", "io-cap", "0"],
-        ["btmgmt", "name", DEVICE_NAME],
-    ]:
-        subprocess.run(cmd, capture_output=True)
-    time.sleep(0.3)
-    for cmd in [
-        ["btmgmt", "pairable", "on"],
-        ["btmgmt", "connectable", "on"],
-        ["btmgmt", "discov", "on"],
-        ["hciconfig", "hci0", "piscan"],
-    ]:
-        subprocess.run(cmd, capture_output=True)
-    logger.info("[init] Adapter ready")
+    """bluetoothd handles adapter state via main.conf — nothing to do here."""
 
 
 # ═══════════════════════════════════════════════════
@@ -129,20 +115,12 @@ class SPPServer:
 
     def _handle(self, sock, addr):
         buf = b""
-        logger.info(f"[spp] New client: {addr}")
-        _send_raw(sock, "Bluetools ready.\n")
+        _send(sock, {"type": "ready", "msg": "Bluetools SPP"})
         try:
             while self._running:
-                try:
-                    sock.settimeout(30)
-                    data = sock.recv(4096)
-                except socket.timeout:
-                    continue
-                except OSError:
-                    break
+                data = sock.recv(4096)
                 if not data:
                     break
-                logger.info(f"[spp] rx {len(data)}B: {data[:100]!r}")
                 buf += data
                 while b"\n" in buf:
                     line, buf = buf.split(b"\n", 1)
@@ -157,33 +135,9 @@ class SPPServer:
 
     def _process(self, sock, addr, raw):
         try:
-            line = raw.decode()
-        except UnicodeDecodeError:
-            _send_raw(sock, "ERROR: invalid encoding\n")
-            return
-
-        # Try JSON protocol
-        try:
-            m = json.loads(line)
+            m = json.loads(raw.decode())
         except json.JSONDecodeError:
-            # Not JSON → raw shell command (terminal mode)
-            logger.info(f"[spp] shell: {line[:80]}")
-            try:
-                r = subprocess.run(
-                    line, shell=True, capture_output=True, text=True, timeout=30
-                )
-                out = r.stdout
-                if r.stderr:
-                    out += r.stderr
-                if not out:
-                    out = "(no output)\n"
-                if not out.endswith("\n"):
-                    out += "\n"
-                _send_raw(sock, out)
-            except subprocess.TimeoutExpired:
-                _send_raw(sock, "ERROR: command timed out\n")
-            except Exception as e:
-                _send_raw(sock, f"ERROR: {e}\n")
+            _send(sock, {"type": "error", "error": "invalid json"})
             return
         t = m.get("type", "")
         rid = m.get("id", 0)
@@ -210,22 +164,9 @@ class SPPServer:
 
 def _send(sock, data):
     try:
-        out = (json.dumps(data, ensure_ascii=False) + "\n").encode()
-        sock.sendall(out)
-        logger.info(f"[spp] tx JSON: {out[:100]!r}")
-    except OSError as e:
-        logger.error(f"[spp] tx error: {e}")
-
-
-def _send_raw(sock, data):
-    """Send raw text back (not JSON)."""
-    try:
-        if isinstance(data, str):
-            data = data.encode()
-        sock.sendall(data)
-        logger.info(f"[spp] tx {len(data)}B: {data[:100]!r}")
-    except OSError as e:
-        logger.error(f"[spp] tx error: {e}")
+        sock.sendall((json.dumps(data, ensure_ascii=False) + "\n").encode())
+    except OSError:
+        pass
 
 
 def _bt_addr():
@@ -445,7 +386,12 @@ def main():
     logger.info(f"=== Bluetools | PIN={PIN_CODE} | SPP ch={SPP_CHANNEL} | Web={WEB_PORT} ===")
 
     init_adapter()
-    start_bt_agent()
+
+    # Start pairing agent as subprocess
+    agent_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "agent.py")
+    subprocess.Popen(["/usr/bin/python3", agent_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(0.5)
+    logger.info("[agent] pairing agent started")
 
     spp = SPPServer(channel=SPP_CHANNEL)
     threading.Thread(target=spp.start, daemon=True, name="spp").start()

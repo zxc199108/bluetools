@@ -1,6 +1,9 @@
 # Bluetools — 蓝牙远程终端
 
-通过蓝牙 SPP 将手机变成开发板的无线终端。像 SSH 一样敲命令，不需要 WiFi。
+
+## 许可
+
+MIT License — 详见 [LICENSE](LICENSE)
 
 ```
 手机  ── Bluetooth SPP ──►  开发板 (Ubuntu ARM64)
